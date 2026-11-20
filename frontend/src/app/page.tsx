@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMetricsStream } from "@/hooks/useMetricsStream";
 import { 
   Activity, Server, Wifi, WifiOff, Cpu, MemoryStick, 
@@ -14,7 +14,6 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Brush,
 } from "recharts";
 
 interface HistoryPoint {
@@ -40,7 +39,6 @@ export default function Dashboard() {
     }
   }, [isDark]);
 
-// Fetches the history as soon as the first server appears
   useEffect(() => {
     const servers = Object.keys(metrics);
     if (servers.length > 0 && !hasFetchedHistory) {
@@ -65,12 +63,9 @@ export default function Dashboard() {
   const servers = Object.keys(metrics);
   const totalServers = servers.length;
 
-  // Combines historical data with real-time data
   const getCombinedData = (server: string) => {
     const historyData = history[server] || [];
     const liveData = metrics[server] || [];
-    
-    // Avoids duplicates in the timestamp
     const combined = [...historyData];
     liveData.forEach((point) => {
       if (!combined.some((p) => p.timestamp === point.timestamp)) {
@@ -118,7 +113,7 @@ export default function Dashboard() {
         <StatCard title="Total Network" value={`${(metrics[servers[0]]?.slice(-1)[0]?.network_in_kbps || 0).toFixed(1)} MB/s`} icon={<ArrowDownToLine className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />} />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         {servers.length === 0 ? (
           <div className="col-span-full h-64 flex flex-col items-center justify-center text-zinc-500 border border-dashed border-zinc-300 dark:border-zinc-800 rounded-xl bg-zinc-100 dark:bg-zinc-900/50 transition-colors">
             <Activity className="w-10 h-10 mb-4 animate-pulse text-zinc-400 dark:text-zinc-500" />
@@ -153,6 +148,9 @@ function ServerChart({ serverName, data, isDark }: { serverName: string; data: a
   const tooltipBorder = isDark ? "#27272a" : "#e4e4e7";
   const tooltipText = isDark ? "#e4e4e7" : "#18181b";
 
+  // Largura fixa para permitir scroll horizontal nativo
+  const chartWidth = Math.max(data.length * 40, 1000);
+
   return (
     <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 shadow-sm dark:shadow-none transition-colors">
       <div className="flex items-center justify-between mb-6">
@@ -170,41 +168,44 @@ function ServerChart({ serverName, data, isDark }: { serverName: string; data: a
         </div>
       </div>
 
-      <div className="h-72 w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
-            <XAxis 
-              dataKey="timestamp" 
-              tickFormatter={(tick) => new Date(tick * 1000).toLocaleTimeString([], { hour12: false, minute: '2-digit', second: '2-digit' })} 
-              stroke={axisColor} 
-              fontSize={12} 
-              tickMargin={10}
-            />
-            <YAxis 
-              stroke={axisColor} 
-              fontSize={12} 
-              tickFormatter={(val) => `${val}%`} 
-              domain={[0, 100]} 
-              tickMargin={10}
-            />
-            <Tooltip 
-              contentStyle={{ backgroundColor: tooltipBg, border: `1px solid ${tooltipBorder}`, borderRadius: '8px' }}
-              itemStyle={{ color: tooltipText }}
-              labelFormatter={(label) => {
-                const timestamp = typeof label === 'number' ? label : Number(label);
-                return isNaN(timestamp) ? '' : new Date(timestamp * 1000).toLocaleTimeString();
-              }}
-              formatter={(value) => {
-                const numValue = typeof value === 'number' ? value : Number(value);
-                return [`${numValue.toFixed(2)}%`];
-              }}
-            />
-            <Line type="monotone" dataKey="cpu" stroke="#3b82f6" strokeWidth={2} dot={false} isAnimationActive={false} />
-            <Line type="monotone" dataKey="memory" stroke="#a855f7" strokeWidth={2} dot={false} isAnimationActive={false} />
-            <Brush dataKey="timestamp" height={25} stroke={axisColor} fill={isDark ? "#18181b" : "#f4f4f5"} />
-          </LineChart>
-        </ResponsiveContainer>
+      <div className="h-72 w-full overflow-x-auto overflow-y-hidden">
+        <div style={{ width: chartWidth, height: '100%' }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
+              <XAxis 
+                dataKey="timestamp" 
+                tickFormatter={(tick) => new Date(tick * 1000).toLocaleTimeString([], { hour12: false, minute: '2-digit', second: '2-digit' })} 
+                stroke={axisColor} 
+                fontSize={12} 
+                tickMargin={10}
+                minTickGap={30}
+              />
+              <YAxis 
+                stroke={axisColor} 
+                fontSize={12} 
+                tickFormatter={(val) => `${val}%`} 
+                domain={[0, 100]} 
+                tickMargin={10}
+              />
+              <Tooltip 
+                contentStyle={{ backgroundColor: tooltipBg, border: `1px solid ${tooltipBorder}`, borderRadius: '8px', color: tooltipText }}
+                itemStyle={{ color: tooltipText }}
+                labelFormatter={(label) => {
+                  const timestamp = typeof label === 'number' ? label : Number(label);
+                  return isNaN(timestamp) ? '' : new Date(timestamp * 1000).toLocaleTimeString();
+                }}
+                formatter={(value) => {
+                  const numValue = typeof value === 'number' ? value : Number(value);
+                  return [`${numValue.toFixed(2)}%`];
+                }}
+                cursor={{ stroke: axisColor, strokeWidth: 1, strokeDasharray: '3 3' }}
+              />
+              <Line type="monotone" dataKey="cpu" stroke="#3b82f6" strokeWidth={2} dot={false} isAnimationActive={false} />
+              <Line type="monotone" dataKey="memory" stroke="#a855f7" strokeWidth={2} dot={false} isAnimationActive={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
       </div>
     </div>
   );
