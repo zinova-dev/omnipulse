@@ -3,7 +3,6 @@ import socket
 import requests
 import psutil
 
-# O URL do teu backend no Render
 API_URL = "https://omnipulse-1ds1.onrender.com/api/metrics/"
 API_KEY = "omnipulse-secret-key-change-me"
 HOSTNAME = socket.gethostname()
