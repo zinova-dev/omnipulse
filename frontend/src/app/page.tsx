@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useMetricsStream } from "@/hooks/useMetricsStream";
 import { 
   Activity, Server, Wifi, WifiOff, Cpu, MemoryStick, 
@@ -148,8 +148,8 @@ function ServerChart({ serverName, data, isDark }: { serverName: string; data: a
   const tooltipBorder = isDark ? "#27272a" : "#e4e4e7";
   const tooltipText = isDark ? "#e4e4e7" : "#18181b";
 
-  // Largura fixa para permitir scroll horizontal nativo
-  const chartWidth = Math.max(data.length * 40, 1000);
+  // Largura mínima de 1200px para forçar o scroll horizontal
+  const chartWidth = Math.max(data.length * 30, 1200);
 
   return (
     <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 shadow-sm dark:shadow-none transition-colors">
@@ -168,8 +168,8 @@ function ServerChart({ serverName, data, isDark }: { serverName: string; data: a
         </div>
       </div>
 
-      <div className="h-72 w-full overflow-x-auto overflow-y-hidden">
-        <div style={{ width: chartWidth, height: '100%' }}>
+      <div className="w-full overflow-x-auto overflow-y-hidden">
+        <div style={{ width: chartWidth, height: '300px' }}>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data}>
               <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
