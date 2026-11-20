@@ -1,4 +1,5 @@
 import json
+import random
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
@@ -6,7 +7,9 @@ from datetime import timedelta
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from django.contrib.auth.models import User
-from .models import MetricSnapshot
+from django.core.mail import send_mail
+from django.conf import settings
+from .models import MetricSnapshot, EmailVerification
 
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -75,15 +78,55 @@ def register_user(request):
     email = request.data.get("email")
     password = request.data.get("password")
 
-    if not username or not password:
-        return Response({"error": "Username e password são obrigatórios"}, status=400)
+    if not username or not password or not email:
+        return Response({"error": "Username, email and password are required"}, status=400)
     
     if User.objects.filter(username=username).exists():
-        return Response({"error": "Username já existe"}, status=400)
+        return Response({"error": "Username already exists"}, status=400)
+
+    if User.objects.filter(email=email).exists():
+        return Response({"error": "Email already registered"}, status=400)
 
     try:
-        User.objects.create_user(username=username, email=email, password=password)
-        return Response({"status": "ok"})
+        user = User.objects.create_user(username=username, email=email, password=password, is_active=False)
+        
+        code = str(random.randint(100000, 999999))
+        EmailVerification.objects.create(user=user, code=code)
+        
+        send_mail(
+            "OmniPulse - Account Verification",
+            f"Your verification code is: {code}",
+            settings.DEFAULT_FROM_EMAIL,
+            [email],
+            fail_silently=False,
+        )
+        
+        return Response({"status": "ok", "message": "Account created. Please check your email."})
     except Exception as e:
         return Response({"error": str(e)}, status=500)
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def verify_email(request):
+    username = request.data.get("username")
+    code = request.data.get("code")
+
+    if not username or not code:
+        return Response({"error": "Username and code are required"}, status=400)
+
+    try:
+        user = User.objects.get(username=username)
+        verification = EmailVerification.objects.get(user=user)
+
+        if verification.code == code:
+            user.is_active = True
+            user.save()
+            verification.delete()
+            return Response({"status": "ok", "message": "Email verified successfully."})
+        else:
+            return Response({"error": "Invalid verification code."}, status=400)
+    except User.DoesNotExist:
+        return Response({"error": "User not found."}, status=404)
+    except EmailVerification.DoesNotExist:
+        return Response({"error": "No verification code found for this user."}, status=404)
     

@@ -28,12 +28,12 @@ export default function RegisterPage() {
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || "Registration failed. Please try again.");
+        throw new Error(data.error || "Registration failed.");
       }
 
-      router.push("/login");
+      router.push(`/verify-email?username=${username}`);
     } catch (err: any) {
-      setError(err.message || "Connection failed. Please check your network.");
+      setError(err.message || "Connection failed.");
     } finally {
       setIsLoading(false);
     }
@@ -41,19 +41,17 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen flex bg-zinc-950">
-      {/* Left Side - Branding */}
       <div className="hidden lg:flex w-1/2 bg-gradient-to-bl from-zinc-900 via-zinc-950 to-emerald-950/30 relative overflow-hidden items-center justify-center p-12">
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 mix-blend-overlay"></div>
         <div className="relative z-10 max-w-md">
           <Activity className="w-16 h-16 text-emerald-500 mb-8" />
           <h1 className="text-4xl font-bold text-white mb-4 tracking-tight">Join OmniPulse</h1>
           <p className="text-lg text-zinc-400 leading-relaxed">
-            Create an account to start monitoring your infrastructure in real-time. It's fast, secure, and completely free.
+            Create an account to start monitoring your infrastructure in real-time.
           </p>
         </div>
       </div>
 
-      {/* Right Side - Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12">
         <div className="w-full max-w-md">
           <div className="lg:hidden flex items-center gap-3 mb-10 justify-center">
