@@ -152,10 +152,21 @@ function ServerChart({ serverName, data, isDark }: { serverName: string; data: a
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
   const [startTranslate, setStartTranslate] = useState(0);
+  const [containerWidth, setContainerWidth] = useState(800);
 
   const chartWidth = Math.max(data.length * 40, 1200);
-  const containerWidth = containerRef.current?.clientWidth || 800;
   const maxTranslate = Math.max(0, chartWidth - containerWidth);
+
+  useEffect(() => {
+    const updateWidth = () => {
+      if (containerRef.current) {
+        setContainerWidth(containerRef.current.clientWidth);
+      }
+    };
+    updateWidth();
+    window.addEventListener("resize", updateWidth);
+    return () => window.removeEventListener("resize", updateWidth);
+  }, []);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsDragging(true);
