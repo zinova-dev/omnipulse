@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useMetricsStream } from "@/hooks/useMetricsStream";
 import { 
   Activity, Server, Wifi, WifiOff, Cpu, MemoryStick, 
@@ -13,6 +13,8 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  ResponsiveContainer,
+  Brush,
 } from "recharts";
 
 interface HistoryPoint {
@@ -147,62 +149,6 @@ function ServerChart({ serverName, data, isDark }: { serverName: string; data: a
   const tooltipBorder = isDark ? "#27272a" : "#e4e4e7";
   const tooltipText = isDark ? "#e4e4e7" : "#18181b";
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [translateX, setTranslateX] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
-  const [startX, setStartX] = useState(0);
-  const [startTranslate, setStartTranslate] = useState(0);
-  const [containerWidth, setContainerWidth] = useState(800);
-
-  const chartWidth = Math.max(data.length * 40, 1200);
-  const maxTranslate = Math.max(0, chartWidth - containerWidth);
-
-  useEffect(() => {
-    const updateWidth = () => {
-      if (containerRef.current) {
-        setContainerWidth(containerRef.current.clientWidth);
-      }
-    };
-    updateWidth();
-    window.addEventListener("resize", updateWidth);
-    return () => window.removeEventListener("resize", updateWidth);
-  }, []);
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    setIsDragging(true);
-    setStartX(e.pageX);
-    setStartTranslate(translateX);
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging) return;
-    e.preventDefault();
-    const delta = e.pageX - startX;
-    const newTranslate = Math.min(0, Math.max(-maxTranslate, startTranslate + delta));
-    setTranslateX(newTranslate);
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    setIsDragging(true);
-    setStartX(e.touches[0].pageX);
-    setStartTranslate(translateX);
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isDragging) return;
-    const delta = e.touches[0].pageX - startX;
-    const newTranslate = Math.min(0, Math.max(-maxTranslate, startTranslate + delta));
-    setTranslateX(newTranslate);
-  };
-
-  const handleTouchEnd = () => {
-    setIsDragging(false);
-  };
-
   return (
     <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 shadow-sm dark:shadow-none transition-colors">
       <div className="flex items-center justify-between mb-6">
@@ -220,43 +166,26 @@ function ServerChart({ serverName, data, isDark }: { serverName: string; data: a
         </div>
       </div>
 
-      <div
-        ref={containerRef}
-        className={`w-full overflow-hidden relative ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-      >
-        <div
-          style={{
-            transform: `translateX(${translateX}px)`,
-            transition: isDragging ? 'none' : 'transform 0.1s ease-out',
-            width: chartWidth,
-            height: '300px',
-          }}
-        >
-          <LineChart width={chartWidth} height={300} data={data}>
+      <div className="w-full h-[350px] relative overflow-hidden">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
-            <XAxis
-              dataKey="timestamp"
-              tickFormatter={(tick) => new Date(tick * 1000).toLocaleTimeString([], { hour12: false, minute: '2-digit', second: '2-digit' })}
-              stroke={axisColor}
-              fontSize={12}
+            <XAxis 
+              dataKey="timestamp" 
+              tickFormatter={(tick) => new Date(tick * 1000).toLocaleTimeString([], { hour12: false, minute: '2-digit', second: '2-digit' })} 
+              stroke={axisColor} 
+              fontSize={12} 
               tickMargin={10}
               minTickGap={30}
             />
-            <YAxis
-              stroke={axisColor}
-              fontSize={12}
-              tickFormatter={(val) => `${val}%`}
-              domain={[0, 100]}
+            <YAxis 
+              stroke={axisColor} 
+              fontSize={12} 
+              tickFormatter={(val) => `${val}%`} 
+              domain={[0, 100]} 
               tickMargin={10}
             />
-            <Tooltip
+            <Tooltip 
               contentStyle={{ backgroundColor: tooltipBg, border: `1px solid ${tooltipBorder}`, borderRadius: '8px', color: tooltipText }}
               itemStyle={{ color: tooltipText }}
               labelFormatter={(label) => {
@@ -271,10 +200,20 @@ function ServerChart({ serverName, data, isDark }: { serverName: string; data: a
             />
             <Line type="monotone" dataKey="cpu" stroke="#3b82f6" strokeWidth={2} dot={false} isAnimationActive={false} />
             <Line type="monotone" dataKey="memory" stroke="#a855f7" strokeWidth={2} dot={false} isAnimationActive={false} />
+            
+            {/* O Brush nativo faz o pan/arrasto no gráfico sem estragar o layout */}
+            <Brush 
+              dataKey="timestamp" 
+              height={15} 
+              stroke="transparent" 
+              fill="transparent" 
+              travellerWidth={10} 
+              y={335} // Posiciona no fundo do gráfico
+            />
           </LineChart>
-        </div>
+        </ResponsiveContainer>
       </div>
-      <p className="text-xs text-center text-zinc-500 mt-4">Arraste o gráfico para navegar no histórico.</p>
+      <p className="text-xs text-center text-zinc-500 mt-4">Arraste as extremidades da barra inferior para navegar no histórico.</p>
     </div>
   );
 }
