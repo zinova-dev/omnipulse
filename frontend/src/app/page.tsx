@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMetricsStream } from "@/hooks/useMetricsStream";
 import { 
   Activity, Server, Wifi, WifiOff, Cpu, MemoryStick, 
@@ -148,8 +148,36 @@ function ServerChart({ serverName, data, isDark }: { serverName: string; data: a
   const tooltipBorder = isDark ? "#27272a" : "#e4e4e7";
   const tooltipText = isDark ? "#e4e4e7" : "#18181b";
 
-  // Largura mínima de 1200px para forçar o scroll horizontal
-  const chartWidth = Math.max(data.length * 30, 1200);
+  const chartRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [scrollLeft, setScrollLeft] = useState(0);
+
+  const chartWidth = Math.max(data.length * 40, 1500);
+  const containerWidth = 800; // Largura "visível" base
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!chartRef.current) return;
+    setIsDragging(true);
+    setStartX(e.pageX - chartRef.current.offsetLeft);
+    setScrollLeft(chartRef.current.scrollLeft);
+  };
+
+  const handleMouseLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || !chartRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - chartRef.current.offsetLeft;
+    const walk = (x - startX) * 1.5; // Multiplicador de velocidade
+    chartRef.current.scrollLeft = scrollLeft - walk;
+  };
 
   return (
     <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 shadow-sm dark:shadow-none transition-colors">
@@ -168,9 +196,16 @@ function ServerChart({ serverName, data, isDark }: { serverName: string; data: a
         </div>
       </div>
 
-      <div className="w-full overflow-x-auto overflow-y-hidden">
-        <div style={{ width: chartWidth, height: '300px' }}>
-          <ResponsiveContainer width="100%" height="100%">
+      <div 
+        ref={chartRef}
+        className={`w-full overflow-x-hidden overflow-y-hidden relative ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+        onMouseDown={handleMouseDown}
+        onMouseLeave={handleMouseLeave}
+        onMouseUp={handleMouseUp}
+        onMouseMove={handleMouseMove}
+      >
+        <div style={{ width: chartWidth, height: '350px' }}>
+          <ResponsiveContainer width={chartWidth} height="100%">
             <LineChart data={data}>
               <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
               <XAxis 
@@ -179,7 +214,7 @@ function ServerChart({ serverName, data, isDark }: { serverName: string; data: a
                 stroke={axisColor} 
                 fontSize={12} 
                 tickMargin={10}
-                minTickGap={30}
+                minTickGap={40}
               />
               <YAxis 
                 stroke={axisColor} 
@@ -207,6 +242,8 @@ function ServerChart({ serverName, data, isDark }: { serverName: string; data: a
           </ResponsiveContainer>
         </div>
       </div>
+      
+      <p className="text-xs text-center text-zinc-500 mt-4">Arraste o gráfico para navegar no histórico.</p>
     </div>
   );
 }
