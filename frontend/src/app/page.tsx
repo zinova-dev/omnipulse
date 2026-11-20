@@ -13,7 +13,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer,
 } from "recharts";
 
 interface HistoryPoint {
@@ -148,35 +147,49 @@ function ServerChart({ serverName, data, isDark }: { serverName: string; data: a
   const tooltipBorder = isDark ? "#27272a" : "#e4e4e7";
   const tooltipText = isDark ? "#e4e4e7" : "#18181b";
 
-  const chartRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [translateX, setTranslateX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
-  const [scrollLeft, setScrollLeft] = useState(0);
+  const [startTranslate, setStartTranslate] = useState(0);
 
-  const chartWidth = Math.max(data.length * 40, 1500);
-  const containerWidth = 800; // Largura "visível" base
+  const chartWidth = Math.max(data.length * 40, 1200);
+  const containerWidth = containerRef.current?.clientWidth || 800;
+  const maxTranslate = Math.max(0, chartWidth - containerWidth);
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (!chartRef.current) return;
     setIsDragging(true);
-    setStartX(e.pageX - chartRef.current.offsetLeft);
-    setScrollLeft(chartRef.current.scrollLeft);
+    setStartX(e.pageX);
+    setStartTranslate(translateX);
   };
 
-  const handleMouseLeave = () => {
-    setIsDragging(false);
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+    e.preventDefault();
+    const delta = e.pageX - startX;
+    const newTranslate = Math.min(0, Math.max(-maxTranslate, startTranslate + delta));
+    setTranslateX(newTranslate);
   };
 
   const handleMouseUp = () => {
     setIsDragging(false);
   };
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging || !chartRef.current) return;
-    e.preventDefault();
-    const x = e.pageX - chartRef.current.offsetLeft;
-    const walk = (x - startX) * 1.5; // Multiplicador de velocidade
-    chartRef.current.scrollLeft = scrollLeft - walk;
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setIsDragging(true);
+    setStartX(e.touches[0].pageX);
+    setStartTranslate(translateX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging) return;
+    const delta = e.touches[0].pageX - startX;
+    const newTranslate = Math.min(0, Math.max(-maxTranslate, startTranslate + delta));
+    setTranslateX(newTranslate);
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
   };
 
   return (
@@ -196,53 +209,60 @@ function ServerChart({ serverName, data, isDark }: { serverName: string; data: a
         </div>
       </div>
 
-      <div 
-        ref={chartRef}
-        className={`w-full overflow-x-hidden overflow-y-hidden relative ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+      <div
+        ref={containerRef}
+        className={`w-full overflow-hidden relative ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
         onMouseDown={handleMouseDown}
-        onMouseLeave={handleMouseLeave}
-        onMouseUp={handleMouseUp}
         onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       >
-        <div style={{ width: chartWidth, height: '350px' }}>
-          <ResponsiveContainer width={chartWidth} height="100%">
-            <LineChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
-              <XAxis 
-                dataKey="timestamp" 
-                tickFormatter={(tick) => new Date(tick * 1000).toLocaleTimeString([], { hour12: false, minute: '2-digit', second: '2-digit' })} 
-                stroke={axisColor} 
-                fontSize={12} 
-                tickMargin={10}
-                minTickGap={40}
-              />
-              <YAxis 
-                stroke={axisColor} 
-                fontSize={12} 
-                tickFormatter={(val) => `${val}%`} 
-                domain={[0, 100]} 
-                tickMargin={10}
-              />
-              <Tooltip 
-                contentStyle={{ backgroundColor: tooltipBg, border: `1px solid ${tooltipBorder}`, borderRadius: '8px', color: tooltipText }}
-                itemStyle={{ color: tooltipText }}
-                labelFormatter={(label) => {
-                  const timestamp = typeof label === 'number' ? label : Number(label);
-                  return isNaN(timestamp) ? '' : new Date(timestamp * 1000).toLocaleTimeString();
-                }}
-                formatter={(value) => {
-                  const numValue = typeof value === 'number' ? value : Number(value);
-                  return [`${numValue.toFixed(2)}%`];
-                }}
-                cursor={{ stroke: axisColor, strokeWidth: 1, strokeDasharray: '3 3' }}
-              />
-              <Line type="monotone" dataKey="cpu" stroke="#3b82f6" strokeWidth={2} dot={false} isAnimationActive={false} />
-              <Line type="monotone" dataKey="memory" stroke="#a855f7" strokeWidth={2} dot={false} isAnimationActive={false} />
-            </LineChart>
-          </ResponsiveContainer>
+        <div
+          style={{
+            transform: `translateX(${translateX}px)`,
+            transition: isDragging ? 'none' : 'transform 0.1s ease-out',
+            width: chartWidth,
+            height: '300px',
+          }}
+        >
+          <LineChart width={chartWidth} height={300} data={data}>
+            <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
+            <XAxis
+              dataKey="timestamp"
+              tickFormatter={(tick) => new Date(tick * 1000).toLocaleTimeString([], { hour12: false, minute: '2-digit', second: '2-digit' })}
+              stroke={axisColor}
+              fontSize={12}
+              tickMargin={10}
+              minTickGap={30}
+            />
+            <YAxis
+              stroke={axisColor}
+              fontSize={12}
+              tickFormatter={(val) => `${val}%`}
+              domain={[0, 100]}
+              tickMargin={10}
+            />
+            <Tooltip
+              contentStyle={{ backgroundColor: tooltipBg, border: `1px solid ${tooltipBorder}`, borderRadius: '8px', color: tooltipText }}
+              itemStyle={{ color: tooltipText }}
+              labelFormatter={(label) => {
+                const timestamp = typeof label === 'number' ? label : Number(label);
+                return isNaN(timestamp) ? '' : new Date(timestamp * 1000).toLocaleTimeString();
+              }}
+              formatter={(value) => {
+                const numValue = typeof value === 'number' ? value : Number(value);
+                return [`${numValue.toFixed(2)}%`];
+              }}
+              cursor={{ stroke: axisColor, strokeWidth: 1, strokeDasharray: '3 3' }}
+            />
+            <Line type="monotone" dataKey="cpu" stroke="#3b82f6" strokeWidth={2} dot={false} isAnimationActive={false} />
+            <Line type="monotone" dataKey="memory" stroke="#a855f7" strokeWidth={2} dot={false} isAnimationActive={false} />
+          </LineChart>
         </div>
       </div>
-      
       <p className="text-xs text-center text-zinc-500 mt-4">Arraste o gráfico para navegar no histórico.</p>
     </div>
   );
