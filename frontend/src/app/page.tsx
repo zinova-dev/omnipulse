@@ -161,8 +161,14 @@ function ServerChart({ serverName, data, isDark }: { serverName: string; data: a
             <Tooltip 
               contentStyle={{ backgroundColor: tooltipBg, border: `1px solid ${tooltipBorder}`, borderRadius: '8px' }}
               itemStyle={{ color: tooltipText }}
-              labelFormatter={(label) => new Date(label * 1000).toLocaleTimeString()}
-              formatter={(value: number) => [`${value.toFixed(2)}%`]}
+              labelFormatter={(label) => {
+                const timestamp = typeof label === 'number' ? label : Number(label);
+                return isNaN(timestamp) ? '' : new Date(timestamp * 1000).toLocaleTimeString();
+              }}
+              formatter={(value) => {
+                const numValue = typeof value === 'number' ? value : Number(value);
+                return [`${numValue.toFixed(2)}%`];
+              }}
             />
             <Line type="monotone" dataKey="cpu" stroke="#3b82f6" strokeWidth={2} dot={false} isAnimationActive={false} />
             <Line type="monotone" dataKey="memory" stroke="#a855f7" strokeWidth={2} dot={false} isAnimationActive={false} />
