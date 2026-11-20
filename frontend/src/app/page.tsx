@@ -14,11 +14,20 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  Brush,
 } from "recharts";
+
+interface HistoryPoint {
+  timestamp: number;
+  cpu: number;
+  memory: number;
+}
 
 export default function Dashboard() {
   const { isConnected, metrics } = useMetricsStream();
   const [isDark, setIsDark] = useState(true);
+  const [history, setHistory] = useState<Record<string, HistoryPoint[]>>({});
+  const [hasFetchedHistory, setHasFetchedHistory] = useState(false);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -31,28 +40,49 @@ export default function Dashboard() {
     }
   }, [isDark]);
 
+// Fetches the history as soon as the first server appears
+  useEffect(() => {
+    const servers = Object.keys(metrics);
+    if (servers.length > 0 && !hasFetchedHistory) {
+      const server = servers[0];
+      fetch(`https://omnipulse-1ds1.onrender.com/api/history/?server=${server}&minutes=60`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.data) {
+            const formatted = data.data.map((d: any) => ({
+              timestamp: d.timestamp,
+              cpu: d.cpu,
+              memory: d.memory,
+            }));
+            setHistory({ [server]: formatted });
+          }
+        })
+        .catch((err) => console.error("History fetch failed:", err));
+      setHasFetchedHistory(true);
+    }
+  }, [metrics, hasFetchedHistory]);
+
   const servers = Object.keys(metrics);
   const totalServers = servers.length;
-  
-  let avgCpu = 0;
-  let avgMem = 0;
-  let totalNetIn = 0;
-  let totalNetOut = 0;
 
-  if (totalServers > 0) {
-    servers.forEach((server) => {
-      const history = metrics[server];
-      if (history.length > 0) {
-        const latest = history[history.length - 1];
-        avgCpu += latest.cpu;
-        avgMem += latest.memory;
-        totalNetIn += latest.network_in_kbps;
-        totalNetOut += latest.network_out_kbps;
+  // Combines historical data with real-time data
+  const getCombinedData = (server: string) => {
+    const historyData = history[server] || [];
+    const liveData = metrics[server] || [];
+    
+    // Avoids duplicates in the timestamp
+    const combined = [...historyData];
+    liveData.forEach((point) => {
+      if (!combined.some((p) => p.timestamp === point.timestamp)) {
+        combined.push({
+          timestamp: point.timestamp,
+          cpu: point.cpu,
+          memory: point.memory,
+        });
       }
     });
-    avgCpu = avgCpu / totalServers;
-    avgMem = avgMem / totalServers;
-  }
+    return combined.sort((a, b) => a.timestamp - b.timestamp);
+  };
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 p-6 font-sans transition-colors duration-300">
@@ -83,9 +113,9 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatCard title="Active Servers" value={totalServers.toString()} icon={<Server className="w-5 h-5 text-blue-600 dark:text-blue-400" />} />
-        <StatCard title="Avg CPU Load" value={`${avgCpu.toFixed(1)}%`} icon={<Cpu className="w-5 h-5 text-amber-600 dark:text-amber-400" />} />
-        <StatCard title="Avg Memory" value={`${avgMem.toFixed(1)}%`} icon={<MemoryStick className="w-5 h-5 text-purple-600 dark:text-purple-400" />} />
-        <StatCard title="Total Network" value={`${((totalNetIn + totalNetOut) / 1000).toFixed(1)} MB/s`} icon={<ArrowDownToLine className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />} />
+        <StatCard title="Avg CPU Load" value={`${(metrics[servers[0]]?.slice(-1)[0]?.cpu || 0).toFixed(1)}%`} icon={<Cpu className="w-5 h-5 text-amber-600 dark:text-amber-400" />} />
+        <StatCard title="Avg Memory" value={`${(metrics[servers[0]]?.slice(-1)[0]?.memory || 0).toFixed(1)}%`} icon={<MemoryStick className="w-5 h-5 text-purple-600 dark:text-purple-400" />} />
+        <StatCard title="Total Network" value={`${(metrics[servers[0]]?.slice(-1)[0]?.network_in_kbps || 0).toFixed(1)} MB/s`} icon={<ArrowDownToLine className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -96,7 +126,7 @@ export default function Dashboard() {
           </div>
         ) : (
           servers.map((server) => (
-            <ServerChart key={server} serverName={server} data={metrics[server]} isDark={isDark} />
+            <ServerChart key={server} serverName={server} data={getCombinedData(server)} isDark={isDark} />
           ))
         )}
       </div>
@@ -140,7 +170,7 @@ function ServerChart({ serverName, data, isDark }: { serverName: string; data: a
         </div>
       </div>
 
-      <div className="h-64 w-full">
+      <div className="h-72 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data}>
             <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
@@ -172,6 +202,7 @@ function ServerChart({ serverName, data, isDark }: { serverName: string; data: a
             />
             <Line type="monotone" dataKey="cpu" stroke="#3b82f6" strokeWidth={2} dot={false} isAnimationActive={false} />
             <Line type="monotone" dataKey="memory" stroke="#a855f7" strokeWidth={2} dot={false} isAnimationActive={false} />
+            <Brush dataKey="timestamp" height={25} stroke={axisColor} fill={isDark ? "#18181b" : "#f4f4f5"} />
           </LineChart>
         </ResponsiveContainer>
       </div>
