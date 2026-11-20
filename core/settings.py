@@ -85,8 +85,8 @@ CHANNEL_LAYERS = {
 }
 
 CORS_ALLOW_ALL_ORIGINS = True
-SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-CSRF_TRUSTED_ORIGINS = ["https://omnipulse-six.vercel.app"]
+#SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+#CSRF_TRUSTED_ORIGINS = ["https://omnipulse-six.vercel.app"]
 
 
 REST_FRAMEWORK = {
