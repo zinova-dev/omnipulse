@@ -17,7 +17,7 @@ export interface MetricsBatch {
   samples: MetricSample[];
 }
 
-const WS_URL = "ws://127.0.0.1:8000/ws/metrics/";
+const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://127.0.0.1:8000/ws/metrics/";
 const MAX_POINTS_PER_SERVER = 30;
 
 export function useMetricsStream() {
