@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
 import { useMetricsStream } from "@/hooks/useMetricsStream";
 import { 
   Activity, Server, Wifi, WifiOff, Cpu, MemoryStick, 
-  ArrowDownToLine, Sun, Moon 
+  ArrowDownToLine, Sun, Moon, LogOut 
 } from "lucide-react";
 import {
   LineChart,
@@ -25,9 +27,18 @@ interface HistoryPoint {
 
 export default function Dashboard() {
   const { isConnected, metrics } = useMetricsStream();
+  const { isAuthenticated, logout, accessToken } = useAuth();
+  const router = useRouter();
+  
   const [isDark, setIsDark] = useState(true);
   const [history, setHistory] = useState<Record<string, HistoryPoint[]>>({});
   const [hasFetchedHistory, setHasFetchedHistory] = useState(false);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push("/login");
+    }
+  }, [isAuthenticated, router]);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -42,9 +53,13 @@ export default function Dashboard() {
 
   useEffect(() => {
     const servers = Object.keys(metrics);
-    if (servers.length > 0 && !hasFetchedHistory) {
+    if (servers.length > 0 && !hasFetchedHistory && accessToken) {
       const server = servers[0];
-      fetch(`https://omnipulse-1ds1.onrender.com/api/history/?server=${server}&minutes=60`)
+      fetch(`https://omnipulse-1ds1.onrender.com/api/history/?server=${server}&minutes=60`, {
+        headers: {
+          "Authorization": `Bearer ${accessToken}`
+        }
+      })
         .then((res) => res.json())
         .then((data) => {
           if (data.data) {
@@ -59,7 +74,7 @@ export default function Dashboard() {
         .catch((err) => console.error("History fetch failed:", err));
       setHasFetchedHistory(true);
     }
-  }, [metrics, hasFetchedHistory]);
+  }, [metrics, hasFetchedHistory, accessToken]);
 
   const servers = Object.keys(metrics);
   const totalServers = servers.length;
@@ -80,6 +95,8 @@ export default function Dashboard() {
     return combined.sort((a, b) => a.timestamp - b.timestamp);
   };
 
+  if (!isAuthenticated) return null;
+
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 p-6 font-sans transition-colors duration-300">
       <header className="flex items-center justify-between mb-8 pb-4 border-b border-zinc-200 dark:border-zinc-800">
@@ -98,6 +115,14 @@ export default function Dashboard() {
             aria-label="Toggle theme"
           >
             {isDark ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5 text-zinc-600" />}
+          </button>
+
+          <button
+            onClick={logout}
+            className="p-2 rounded-lg bg-zinc-200 dark:bg-zinc-800 hover:bg-red-100 dark:hover:bg-red-900/30 text-zinc-600 dark:text-zinc-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+            aria-label="Logout"
+          >
+            <LogOut className="w-5 h-5" />
           </button>
 
           <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${isConnected ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" : "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20"}`}>
@@ -200,15 +225,13 @@ function ServerChart({ serverName, data, isDark }: { serverName: string; data: a
             />
             <Line type="monotone" dataKey="cpu" stroke="#3b82f6" strokeWidth={2} dot={false} isAnimationActive={false} />
             <Line type="monotone" dataKey="memory" stroke="#a855f7" strokeWidth={2} dot={false} isAnimationActive={false} />
-            
-            {/* O Brush nativo faz o pan/arrasto no gráfico sem estragar o layout */}
             <Brush 
               dataKey="timestamp" 
               height={15} 
               stroke="transparent" 
               fill="transparent" 
               travellerWidth={10} 
-              y={335} // Posiciona no fundo do gráfico
+              y={335}
             />
           </LineChart>
         </ResponsiveContainer>
