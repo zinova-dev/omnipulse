@@ -10,9 +10,9 @@ from django.core.exceptions import ImproperlyConfigured
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# ==========================================================
+ 
 # SECURITY
-# ==========================================================
+ 
 
 SECRET_KEY = os.environ.get(
     "SECRET_KEY",
@@ -28,9 +28,9 @@ ALLOWED_HOSTS = [
 ]
 
 
-# ==========================================================
+ 
 # APPLICATIONS
-# ==========================================================
+ 
 
 INSTALLED_APPS = [
     "daphne",
@@ -46,9 +46,9 @@ INSTALLED_APPS = [
 ]
 
 
-# ==========================================================
+ 
 # MIDDLEWARE
-# ==========================================================
+ 
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
@@ -63,9 +63,9 @@ MIDDLEWARE = [
 ]
 
 
-# ==========================================================
+ 
 # URLS AND APPLICATION SERVERS
-# ==========================================================
+ 
 
 ROOT_URLCONF = "core.urls"
 
@@ -73,9 +73,9 @@ WSGI_APPLICATION = "core.wsgi.application"
 ASGI_APPLICATION = "core.asgi.application"
 
 
-# ==========================================================
+ 
 # TEMPLATES
-# ==========================================================
+ 
 
 TEMPLATES = [
     {
@@ -94,11 +94,11 @@ TEMPLATES = [
 ]
 
 
-# ==========================================================
+ 
 # DATABASE
 # NEON POSTGRESQL IN PRODUCTION
 # SQLITE IN LOCAL DEVELOPMENT
-# ==========================================================
+ 
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
@@ -126,9 +126,9 @@ else:
     )
 
 
-# ==========================================================
+ 
 # PASSWORD VALIDATION
-# ==========================================================
+ 
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -146,9 +146,9 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
-# ==========================================================
+ 
 # LANGUAGE AND TIME
-# ==========================================================
+ 
 
 LANGUAGE_CODE = "en-us"
 
@@ -159,25 +159,25 @@ USE_I18N = True
 USE_TZ = True
 
 
-# ==========================================================
+ 
 # STATIC FILES
-# ==========================================================
+ 
 
 STATIC_URL = "static/"
 
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 
-# ==========================================================
+ 
 # DEFAULT PRIMARY KEY
-# ==========================================================
+ 
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
-# ==========================================================
+ 
 # DJANGO CHANNELS
-# ==========================================================
+ 
 
 CHANNEL_LAYERS = {
     "default": {
@@ -186,9 +186,9 @@ CHANNEL_LAYERS = {
 }
 
 
-# ==========================================================
+ 
 # CORS AND CSRF
-# ==========================================================
+ 
 
 CORS_ALLOW_ALL_ORIGINS = True
 
@@ -207,9 +207,9 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 
-# ==========================================================
+ 
 # DJANGO REST FRAMEWORK
-# ==========================================================
+ 
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
@@ -221,9 +221,9 @@ REST_FRAMEWORK = {
 }
 
 
-# ==========================================================
+ 
 # JWT AUTHENTICATION
-# ==========================================================
+ 
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
@@ -231,10 +231,10 @@ SIMPLE_JWT = {
 }
 
 
-# ==========================================================
+ 
 # EMAIL CONFIGURATION
 # Credentials are configured through environment variables
-# ==========================================================
+
 
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 
